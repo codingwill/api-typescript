@@ -25,12 +25,18 @@ export default class JobsController {
         await axios.get(JobsController.JOBS_ENDPOINT, { params: params })
       ).data;
 
+      if (Object.keys(data).length === 0) {
+        return res
+          .status(404)
+          .json(new DataReturnHelper(true, "Jobs Not Found"));
+      }
+
       return res
         .status(200)
         .json(
           new DataReturnHelper(
             true,
-            "Retrieved Jobs List Successful",
+            "Retrieve Jobs List Successful",
             data,
             params.page ?? 0
           )
