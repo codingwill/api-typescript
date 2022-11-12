@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import User from "../models/user";
 import JWTSign from "../handlers/jwt-sign";
 import logging from "../config/logging";
+import DataReturnHelper from "../helpers/data-return";
 
 const NAMESPACE = "AuthController";
 
@@ -15,33 +16,36 @@ export default class AuthController {
       .exec()
       .then((users) => {
         if (users.length !== 1) {
-          return res.status(404).json({
-            message: "User Not Found",
-          });
+          return res
+            .status(404)
+            .json(new DataReturnHelper(false, "User Not Found"));
         }
 
         bcryptjs.compare(password, users[0].password, (err, result) => {
           if (err) {
             logging.error(NAMESPACE, err.message);
 
-            return res.status(401).json({
-              message: "Unauthorized",
-            });
+            return res
+              .status(401)
+              .json(new DataReturnHelper(false, "Unauthorized", err));
           } else if (result) {
             JWTSign.sign(users[0], (err, token) => {
               if (err) {
                 logging.error(NAMESPACE, err.message);
 
-                return res.status(401).json({
-                  message: "Unauthorized",
-                  err,
-                });
+                return res
+                  .status(401)
+                  .json(new DataReturnHelper(false, "Unauthorized", err));
               } else if (token) {
-                return res.status(200).json({
-                  message: "Successfully Logged In!",
-                  token,
-                  user: users[0].username,
-                });
+                const data = {
+                  username: users[0].username,
+                  token: token,
+                };
+                return res
+                  .status(200)
+                  .json(
+                    new DataReturnHelper(true, "Successfully Logged In", data)
+                  );
               }
             });
           }
@@ -49,10 +53,9 @@ export default class AuthController {
       })
       .catch((err) => {
         logging.error(NAMESPACE, err);
-        return res.status(500).json({
-          message: err.message,
-          err,
-        });
+        return res
+          .status(500)
+          .json(new DataReturnHelper(false, err.message, err));
       });
   }
 
@@ -67,10 +70,9 @@ export default class AuthController {
       if (err) {
         logging.error(NAMESPACE, err.message);
 
-        return res.status(500).json({
-          message: err.message,
-          error: err,
-        });
+        return res
+          .status(500)
+          .json(new DataReturnHelper(false, err.message, err));
       }
 
       const newUser = new User({
@@ -82,17 +84,26 @@ export default class AuthController {
       const savedUser = newUser
         .save()
         .then((user) => {
-          return res.status(201).json({
-            user,
-          });
+          const data = {
+            id: user.id,
+            username: user.username,
+          };
+          return res
+            .status(201)
+            .json(
+              new DataReturnHelper(
+                true,
+                "Successfully Registered New User",
+                data
+              )
+            );
         })
         .catch((err) => {
           logging.error(NAMESPACE, err.message);
 
-          return res.status(500).json({
-            message: err.message,
-            err,
-          });
+          return res
+            .status(500)
+            .json(new DataReturnHelper(false, err.message, err));
         });
     });
   }
